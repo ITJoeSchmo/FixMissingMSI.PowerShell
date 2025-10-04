@@ -1,6 +1,8 @@
 # FixMissingMSI.PowerShell
 
-PowerShell automation for detecting and repairing missing Windows Installer (MSI/MSP) cache files at scale, built on the excellent [FixMissingMSI](https://github.com/suyouquan/SQLSetupTools) utility.
+When Windows Installer cache files (`C:\Windows\Installer\*.msi` / `*.msp`) are missing, updates and uninstalls can break for products like SQL Server, Exchange, Azure Arc Agent, and others. The original [**FixMissingMSI**](https://github.com/suyouquan/SQLSetupTools) utility helps identify and restore these files, but it is a GUI-only tool.
+
+**FixMissingMSI.PowerShell** turns that manual process into a repeatable, non-interactive workflow. It lets you scan systems at scale, merge reports, and repopulate missing files from a shared cache — all orchestrated through PowerShell and easily integrated with centralized management tools.
 
 ---
 
