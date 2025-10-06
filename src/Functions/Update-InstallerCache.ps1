@@ -111,6 +111,7 @@ function Update-InstallerCache {
         if (-not [Type]::GetType('CleanUpRegistry')) {
             Add-Type -TypeDefinition $csharp -Language CSharp
         }
+
         [CleanUpRegistry]::CompressGUID($Guid)
     }
 
@@ -125,7 +126,7 @@ function Update-InstallerCache {
             $installer.ProductInfo($ProductCode, 'PackageCode')
         }
         finally {
-            [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($installer)
+            [System.Runtime.InteropServices.Marshal]::ReleaseComObject($installer) | Out-Null
         }
     }
 

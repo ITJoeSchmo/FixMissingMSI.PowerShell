@@ -1,4 +1,4 @@
-# FixMissingMSI.PowerShell
+# FixMissingMSI.PowerShell - Windows Installer Cache Recovery Automation
 
 When Windows Installer cache files (`C:\Windows\Installer\*.msi` / `*.msp`) are missing, updates and uninstalls can break for products like SQL Server, Exchange, Azure Arc Agent, and others. The original [**FixMissingMSI**](https://github.com/suyouquan/SQLSetupTools) utility helps identify and restore these files, but it is a GUI-only tool.
 

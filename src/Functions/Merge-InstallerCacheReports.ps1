@@ -5,7 +5,7 @@
 .DESCRIPTION
     Intended to be run interactively after Merge-InstallerCacheReports has been ran across servers.
     This script reads all CSV files from:
-        \\<Server>\<Share>\FixMissingMSI\Reports
+        $FileSharePath\FixMissingMSI\Reports
     and produces consolidated outputs in the same folder.
 
     It performs the following:
@@ -13,14 +13,14 @@
       2. Deduplicates rows by key fields (ProductCode, {PackageCode, PatchCode}, PackageName, Publisher, ProductVersion)
       3. Produces MSI and MSP summary lists:
          - MSIProductCodes.csv  (ProductCode, PackageCode, PackageName, Publisher, ProductVersion)
-         - MSPPatchCodes.csv    (ProductCode, PatchCode,  PackageName, Publisher, ProductVersion)
+         - MSPPatchCodes.csv    (ProductCode, PatchCode,   PackageName, Publisher, ProductVersion)
 
     > Note: Step 1 adds Hostname or SourcePath columns for traceability. Those are preserved in the merged data
     > but are not part of the uniqueness key. Adjust the Select-Object properties if you prefer a different definition.
 
 .PARAMETER FileSharePath
     UNC to the share root that contains the app tree. Example: \\FS01\Software
-    The script expects reports at: \\<Server>\<Share>\FixMissingMSI\Reports
+    The script expects reports at: $FileSharePath\FixMissingMSI\Reports
 
 .EXAMPLE
 PS> Merge-InstallerCacheReports -FileSharePath \\FS01\Software

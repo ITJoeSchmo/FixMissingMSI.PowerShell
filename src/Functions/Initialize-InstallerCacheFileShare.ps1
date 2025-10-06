@@ -11,12 +11,11 @@
     It performs the following:
     1. Downloads the FixMissingMSI zip from GitHub release.
     2. Expands the archive to a temp working folder.
-    3. Creates a standardized layout beneath -FileSharePath\FixMissingMSI:
-       \\<Server>\<Share>\FixMissingMSI\
+    3. Creates a standardized layout beneath $FileSharePath\FixMissingMSI:
           Cache\Products\
           Cache\Patches\
           Reports\
-    4. Copies the FixMissingMSI binaries into \\<Server>\<Share>\FixMissingMSI.
+    4. Copies the FixMissingMSI binaries into $FileSharePath\FixMissingMSI.
     5. Grants NTFS permissions:
        - App folder (FixMissingMSI): "Domain Computers" = Read & Execute
        - Cache and Reports:          "Domain Computers" = Read, Write (CI/OI)
@@ -26,7 +25,7 @@
     > only stages the tool and prepares directories and permissions.
 
 .PARAMETER FileSharePath
-    UNC path for the share root. Example: \\FS01\FixMissingMSI
+    UNC path for the share root. Example: \\FS01\
 
 .PARAMETER FixMissingMsiUri
     URI to the FixMissingMSI zip in the upstream repository. Defaults to the current latest: V2.2.1
@@ -35,7 +34,7 @@
     Local working directory for download and extraction. Defaults to $env:TEMP.
 
 .EXAMPLE
-PS> Initialize-InstallerCacheFileShare -FileSharePath "\\FS01\"
+PS> Initialize-InstallerCacheFileShare -FileSharePath "\\FS01\Software"
     
     Creates \\FS01\Software\FixMissingMSI with the required subfolders, downloads and stages FixMissingMSI,
     sets read/execute on the app folder and read/write on Cache and Reports for Domain Computers.

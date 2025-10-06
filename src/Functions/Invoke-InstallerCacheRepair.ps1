@@ -35,6 +35,17 @@
     Local working directory where FixMissingMSI is staged and executed.
     Defaults to $env:TEMP\FixMissingMSI.
 
+.PARAMETER RunFromShare
+    If specified, runs FixMissingMSI directly from the network share instead of
+    copying it to a local working directory first.
+
+    This can be used in trusted environments with reliable network access,
+    where the performance benefit outweighs the added risk of running directly
+    from a network path.
+
+    By default, FixMissingMSI is copied locally before execution to avoid
+    issues caused by antivirus scanning or intermittent share connectivity.
+
 .EXAMPLE
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software
 
@@ -46,6 +57,12 @@ PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -SourcePaths 'D:\Media','\\FS01\Builds\Office'
 
     Scans the provided source paths in order (D:\Media, then \\FS01\Builds\Office) instead of the default shared cache.
+
+.EXAMPLE
+PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -RunFromShare
+
+    Runs FixMissingMSI directly from the network share, without copying it locally.
+    Useful when testing or running in low-latency, trusted environments.
 
 .NOTES
     Author: Joey Eckelbarger
@@ -70,15 +87,20 @@ function Invoke-InstallerCacheRepair {
         [Parameter(Mandatory = $true)]
         [string]$FileSharePath,
 
-        [Parameter()]
         [string[]]$SourcePaths = "",
 
-        [Parameter()]
-        [string]$LocalWorkPath = (Join-Path $env:TEMP 'FixMissingMSI')
+        [string]$LocalWorkPath = (Join-Path $env:TEMP 'FixMissingMSI'),
+
+        [switch]$RunFromShare
     )
 
     $ErrorActionPreference = 'Stop'
     Set-StrictMode -Version Latest
+
+    # We want to ensure an empty string to be in here to ensure that the for loop runs at least 1x with an emptry string so FixMissingMSI tries to recover using sources from the original installation metadata in registry
+    if($sourcePaths -notcontains ""){
+        $sourcePaths += ""
+    }
 
     # Compose shared paths (app folder and caches) once. Keep all shared I/O under the app folder.
     $ShareRoot      = $FileSharePath.TrimEnd('\')
@@ -99,26 +121,32 @@ function Invoke-InstallerCacheRepair {
     try {
         # Stage FixMissingMSI locally. Copy only top-level binaries/config files.
         # Why: We need FixMissingMSI.exe and its dependencies, but not Cache\ or Reports\ folders.
-        Get-ChildItem -Path $AppFolder -File | ForEach-Object {
-            if((Test-Path -LiteralPath (Join-Path $LocalWorkPath $_.Name)) -eq $false){
-                Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $LocalWorkPath $_.Name) -Force
+        if($RunFromShare -eq $false){
+            Get-ChildItem -Path $AppFolder -File | ForEach-Object {
+                if((Test-Path -LiteralPath (Join-Path $LocalWorkPath $_.Name)) -eq $false){
+                    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $LocalWorkPath $_.Name) -Force
+                }
             }
+
+            $exePath = Join-Path $LocalWorkPath 'FixMissingMSI.exe'
+
+            Push-Location $LocalWorkPath
+        } else {
+            $exePath = Join-Path $AppFolder 'FixMissingMSI.exe'
         }
 
-        Push-Location $LocalWorkPath
         try {
             $serverName = $env:COMPUTERNAME
 
             foreach ($source in $SourcePaths) {
                 if($source -eq ""){
-                    $source = "No specified source uses LastUsedSource from Registry install data as well as the shared cache if available/populated."
+                    $source = "No specified source; FixMissingMSI will look for local sources from Registry install metadata (as well as the shared cache if available/populated)."
                 }
                 if($null -eq $source) {
                     Write-Warning "Scanning without a valid source may yield fewer matches."
                 }
 
                 # 1) Load the FixMissingMSI assembly
-                $exePath = Join-Path $LocalWorkPath 'FixMissingMSI.exe'
                 if (-not (Test-Path -LiteralPath $exePath)) {
                     throw "FixMissingMSI.exe not found at expected path: $exePath"
                 }
