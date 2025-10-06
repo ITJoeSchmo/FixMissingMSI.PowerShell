@@ -15,7 +15,7 @@
     CompanyName       = 'Joey Eckelbarger'
 
     # Copyright statement for this module
-    Copyright         = '(C) 2025 Joey Eckelbarger'
+    Copyright         = '(c) 2025 Joey Eckelbarger. Licensed under MIT License.'
 
     # Description of the functionality provided by this module
     Description       = 'Automates recovery of missing Windows Installer cache (MSI/MSP) files at scale, leveraging FixMissingMSI for discovery and a shared cache model for repair.'
@@ -58,4 +58,5 @@
         }
     }
 }
+
 
