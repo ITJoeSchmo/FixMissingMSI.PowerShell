@@ -46,6 +46,10 @@
     By default, FixMissingMSI is copied locally before execution to avoid
     issues caused by antivirus scanning or intermittent share connectivity.
 
+.PARAMETER ReportOnly
+    If specified, do not execute any FixCommand operations.
+    The script still scans sources and writes the unresolved CSV report.
+
 .EXAMPLE
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software
 
@@ -55,6 +59,11 @@ PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software
 
 .EXAMPLE
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -SourcePaths 'D:\Media','\\FS01\Builds\Office'
+
+    Scans the provided source paths in order (D:\Media, then \\FS01\Builds\Office) instead of the default shared cache.
+
+.EXAMPLE
+PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -SourcePaths 'D:\Media','\\FS01\Builds\Office' -ReportOnly
 
     Scans the provided source paths in order (D:\Media, then \\FS01\Builds\Office) instead of the default shared cache.
 
@@ -73,7 +82,6 @@ PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -RunFromShare
 
     Security:
         This script writes to C:\Windows\Installer via generated FixCommands.
-        Execution of FixCommands is wrapped in ShouldProcess so -WhatIf/-Confirm can be used if desired.
 
     Requires:
         - PowerShell 5.1+
@@ -86,16 +94,13 @@ function Invoke-InstallerCacheRepair {
     param(
         [Parameter(Mandatory = $true)]
         [string]$FileSharePath,
-
         [string[]]$SourcePaths = "",
-
         [string]$LocalWorkPath = (Join-Path $env:TEMP 'FixMissingMSI'),
-
-        [switch]$RunFromShare
+        [switch]$RunFromShare,
+        [switch]$ReportOnly
     )
 
     $ErrorActionPreference = 'Stop'
-    Set-StrictMode -Version Latest
 
     # We want to ensure an empty string to be in here to ensure that the for loop runs at least 1x with an emptry string so FixMissingMSI tries to recover using sources from the original installation metadata in registry
     if($sourcePaths -notcontains ""){
@@ -129,21 +134,23 @@ function Invoke-InstallerCacheRepair {
             }
 
             $exePath = Join-Path $LocalWorkPath 'FixMissingMSI.exe'
-
-            Push-Location $LocalWorkPath
         } else {
             $exePath = Join-Path $AppFolder 'FixMissingMSI.exe'
         }
 
+        Push-Location $LocalWorkPath
+
         try {
             $serverName = $env:COMPUTERNAME
 
+            $mergedBadRowsWithoutFix = @()
+            $mergedFixCommands       = @()
+
             foreach ($source in $SourcePaths) {
-                if($source -eq ""){
-                    $source = "No specified source; FixMissingMSI will look for local sources from Registry install metadata (as well as the shared cache if available/populated)."
-                }
-                if($null -eq $source) {
-                    Write-Warning "Scanning without a valid source may yield fewer matches."
+                $sourceLabel = if($source -eq ""){
+                    "No specified source; FixMissingMSI will look for local sources from Registry install metadata (as well as the shared cache if available/populated)."
+                } else {
+                    $source
                 }
 
                 # 1) Load the FixMissingMSI assembly
@@ -218,33 +225,43 @@ function Invoke-InstallerCacheRepair {
                         if ((Test-Path -LiteralPath $patchCandidate)) {
                             Write-Output "Found missing files in shared cache, populating FixCommand value"
                             $row.FixCommand = "COPY `"$patchCandidate`" `"C:\Windows\Installer\$($row.CachedMsiMsp)`""
+
                             continue
                         }
                     }
                 }
 
-                $badRowsWithFix    = @($badRows | Where-Object { $_.FixCommand })
-                $badRowsWithoutFix = @($badRows | Where-Object { -not $_.FixCommand }) |
-                    Select-Object Status, PackageName, ProductName, Publisher, LastUsedSource, InstallSource, InstallDate, ProductCode, PackageCode, PatchCode, CachedMsiMsp, CachedMsiMspVersion,
-                                @{N='Hostname';E={$serverName}}, @{N='SourcePath';E={$source}}
-
-                # Export unresolved rows to central report (per host). Overwrites by host design; adjust if you prefer timestamped files.
-                $reportFile = Join-Path $ReportsPath "$serverName.csv"
+                $badRowsWithFix    = @($badRows | Where-Object { $_.FixCommand })      | Select-Object *,@{N='Hostname';E={$serverName}}, @{N='SourcePath';E={$source}}, @{N="CompareString";E={"$($_.ProductCode)-$($_.PackageCode)-$($_.PatchCode)-$($_.PackageName)"}}
+                $badRowsWithoutFix = @($badRows | Where-Object { -not $_.FixCommand }) | Select-Object *,@{N='Hostname';E={$serverName}}, @{N='SourcePath';E={$source}}, @{N="CompareString";E={"$($_.ProductCode)-$($_.PackageCode)-$($_.PatchCode)-$($_.PackageName)"}}
+                
                 if($badRowsWithoutFix){
-                    $badRowsWithoutFix | Export-Csv -Path $reportFile -NoTypeInformation -Force
+                    $mergedBadRowsWithoutFix += $badRowsWithoutFix | Where-Object {$_.CompareString -notin $mergedBadRowsWithoutFix.CompareString}
                 }
+
+                $mergedBadRowsWithoutFix = $mergedBadRowsWithoutFix | Where-Object {$_.CompareString -notin $badRowsWithFix.CompareString}
+                
+
+                [array]$mergedFixCommands += $badRowsWithFix | Select-Object -ExpandProperty FixCommand
 
                 $missingCount    = @($badRows | Where-Object { $_.Status -eq 'Missing'   }).Count
                 $mismatchedCount = @($badRows | Where-Object { $_.Status -eq 'Mismatched'}).Count
-                Write-Output "Source: $source"
+                Write-Output "Source: $sourceLabel"
                 Write-Output "Missing: $missingCount`nMismatched: $mismatchedCount`nTo be fixed: $($badRowsWithFix.Count)"
-
-                # 10) Execute fix commands. Copies to C:\Windows\Installer as needed.
-                foreach ($row in $badRowsWithFix) {
-                    "$($row.FixCommand)"
-                    & cmd /c $row.FixCommand
-                }
             }
+
+            $mergedFixCommands = $mergedFixCommands | Sort-Object * -Unique
+
+            # 10) Execute fix commands. Copies to C:\Windows\Installer as needed.
+            foreach ($fixCommand in $mergedFixCommands) {
+                Write-Output "$fixCommand" # logs cmd executed to the transcript
+                if($reportOnly){
+                    continue # dont run if report only
+                }
+                & cmd /c $fixCommand
+            }
+            # Export unresolved rows to central report (per host). Overwrites by host design; adjust if you prefer timestamped files.
+            $reportFile = Join-Path $ReportsPath "$serverName.csv"
+            $mergedBadRowsWithoutFix | Sort-Object * -Unique | Export-Csv -Path $reportFile -NoTypeInformation -Force
         } finally {
             Pop-Location
         }
