@@ -15,7 +15,7 @@
     CompanyName       = 'Joey Eckelbarger'
 
     # Copyright statement for this module
-    Copyright         = ''
+    Copyright         = '(C) 2025 Joey Eckelbarger'
 
     # Description of the functionality provided by this module
     Description       = 'Automates recovery of missing Windows Installer cache (MSI/MSP) files at scale, leveraging FixMissingMSI for discovery and a shared cache model for repair.'
@@ -50,7 +50,7 @@
 
             # License and Project URLs
             LicenseUri = 'https://opensource.org/licenses/MIT'
-            ProjectUri = 'https://github.com/yourusername/FixMissingMSI.PowerShell'
+            ProjectUri = 'https://github.com/ITJoeSchmo/FixMissingMSI.PowerShell'
             IconUri    = ''
 
             # Release notes
@@ -58,3 +58,4 @@
         }
     }
 }
+
