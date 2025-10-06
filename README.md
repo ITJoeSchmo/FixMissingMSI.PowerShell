@@ -91,7 +91,7 @@ Remove-InstallerRegistration -Filter { $_.DisplayName -like "Azure Connected Mac
 
 ---
 
-## Example Workflows
+## Example Workflows (WIP)
 
 See [examples/](examples/) for:
 
@@ -147,4 +147,5 @@ This module bypasses the UI by loading the EXE via .NET Reflection and invoking 
 MIT License © 2025 Joey Eckelbarger
 
 ```
+
 
