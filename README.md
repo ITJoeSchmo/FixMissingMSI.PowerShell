@@ -78,10 +78,8 @@ Import-Module ./src/FixMissingMSI.PowerShell.psd1
 >
 > When invoked, the function first attempts a normal uninstallation by calling
 > `msiexec /x <ProductCode>` to remove program files and registry data through Windows Installer.
->
-> If the installation is broken and cannot be removed by MSI:
->
-> * The function runs the **Rapid Product Removal (RPR)** phase, which scrubs Windows Installer registration, cached metadata, and uninstall entries so that the product can be reinstalled.
+> 
+> * After msiexec, the function runs the **Rapid Product Removal (RPR)** phase, which scrubs Windows Installer registration, cached metadata, and uninstall entries so that the product can be reinstalled.
 > * When run with **`-DeepClean`**, it additionally performs Microsoft’s **LPR** phase, which locates and purges related files, shims, ARP entries, and orphaned registry keys.
 >
 > During either cleanup phase, the function automatically:
@@ -159,3 +157,4 @@ This module loads the EXE via .NET Reflection, instantiates its form classes to 
 ## License
 
 MIT License © 2025 Joey Eckelbarger
+
