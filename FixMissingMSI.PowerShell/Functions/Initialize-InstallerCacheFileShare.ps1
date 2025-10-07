@@ -67,7 +67,6 @@ function Initialize-InstallerCacheFileShare {
     )
 
     $ErrorActionPreference = 'Stop'
-    Set-StrictMode -Version Latest
     $ProgressPreference = 'SilentlyContinue'  # Progress UI slows iwr download speed noticeably.
 
     # Normalize and compose paths once for clarity and to avoid typos.
