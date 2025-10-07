@@ -18,7 +18,7 @@
     Copyright         = '(c) 2025 Joey Eckelbarger. Licensed under MIT License.'
 
     # Description of the functionality provided by this module
-    Description       = 'Automates recovery of missing Windows Installer cache (MSI/MSP) files at scale, leveraging FixMissingMSI for discovery and a shared cache model for repair.'
+    Description       = 'PowerShell module for detecting, reporting, and repairing missing Windows Installer (MSI/MSP) cache files. Automates the FixMissingMSI utility for non-interactive, scalable recovery using a shared cache model.'
 
     # Minimum PowerShell version supported
     PowerShellVersion = '5.1'
@@ -54,7 +54,16 @@
             IconUri    = ''
 
             # Release notes
-            ReleaseNotes = 'Initial release of FixMissingMSI.PowerShell module. Provides functions to initialize a fileshare, run FixMissingMSI non-interactively, merge reports, and populate the fileshare installer cache.'
+            ReleaseNotes = @"
+Initial release of FixMissingMSI.PowerShell (v1.0.0)
+
+Highlights:
+- Automates FixMissingMSI through PowerShell for non-interactive execution.
+- Enables centralized detection and repair of missing MSI/MSP cache files.
+- Supports shared, demand-driven cache population across systems.
+- Adds advanced recovery helpers for inspecting and removing broken MSI registrations.
+- Designed for easy integration with MECM, Azure Arc, Intune, or standalone PowerShell execution.
+"@
         }
     }
 }
