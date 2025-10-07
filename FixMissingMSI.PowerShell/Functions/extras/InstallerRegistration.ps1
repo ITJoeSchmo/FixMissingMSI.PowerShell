@@ -914,6 +914,10 @@ function Remove-InstallerRegistration {
     Author: Joey Eckelbarger
 #>
 function Get-InstallerRegistration {
+    param(
+        [ScriptBlock]$Filter
+    )
+
     $registeredInstallPaths = if([Environment]::Is64BitOperatingSystem){
         'HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall',
         'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
