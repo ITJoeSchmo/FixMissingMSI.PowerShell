@@ -46,7 +46,7 @@
     PrivateData = @{
         PSData = @{
             # Tags for PowerShell Gallery / discoverability
-            Tags = @('MSI','MSP','InstallerCache','WindowsInstaller','Automation','FixMissingMSI')
+            Tags = @('FixMissingMSI','WindowsInstaller','InstallerCache','CacheRecovery','Repair','MSI','MSP','Automation')
 
             # License and Project URLs
             LicenseUri = 'https://opensource.org/licenses/MIT'
