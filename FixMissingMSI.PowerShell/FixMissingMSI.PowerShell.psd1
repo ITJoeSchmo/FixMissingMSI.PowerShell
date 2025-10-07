@@ -3,7 +3,7 @@
     RootModule        = 'FixMissingMSI.PowerShell.psm1'
 
     # Version of this module.
-    ModuleVersion     = '1.0.0'
+    ModuleVersion     = '1.0.1'
 
     # ID used uniquely identify this module
     GUID              = '69ffbf20-83d2-4eb5-88b1-9ce47ddcd7eb'
