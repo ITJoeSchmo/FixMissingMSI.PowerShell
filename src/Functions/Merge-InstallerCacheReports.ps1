@@ -36,14 +36,11 @@ PS> Merge-InstallerCacheReports -FileSharePath \\FS01\Software
         - Read/Write access to \\<Server>\<Share>\FixMissingMSI\Reports
 #>
 function Merge-InstallerCacheReports {
-
     param(
         [Parameter(Mandatory = $true)]
         [string]$FileSharePath
     )
-
     $ErrorActionPreference = 'Stop'
-    Set-StrictMode -Version Latest
 
     # Compose paths; all activity occurs under the app folder's Reports directory.
     $ShareRoot     = $FileSharePath.TrimEnd('\')
@@ -64,31 +61,28 @@ function Merge-InstallerCacheReports {
     }
 
     # Import all CSVs into 1 merged var
-    $merged = foreach ($csv in $csvFiles) {
+    [array]$merged = foreach ($csv in $csvFiles) {
         Import-Csv -LiteralPath $csv
     }
 
     # Build MSI summary (msi packages typically lack PatchCode; keep fields most relevant to sourcing).
-    $msi = $merged |
+   [array]$msi = $merged |
         Where-Object { $_.PackageName -like '*.msi' } |
         Select-Object ProductCode, PackageCode, PackageName, Publisher, ProductVersion |
         Sort-Object * -Unique
 
     # Build MSP summary (patches carry PatchCode).
-    $msp = $merged |
+   [array]$msp = $merged |
         Where-Object { $_.PackageName -like '*.msp' } |
         Select-Object ProductCode, PatchCode, PackageName, Publisher, ProductVersion |
         Sort-Object * -Unique
+        
     if($msi){
         $msi | Export-Csv -LiteralPath $msiReportPath -NoTypeInformation -Force
-    } else {
-        $msi = @()
     }
 
     if($msp){
         $msp | Export-Csv -LiteralPath $mspReportPath -NoTypeInformation -Force
-    } else {
-        $msp = @()
     }
 
     # Simple summary 
@@ -97,4 +91,5 @@ function Merge-InstallerCacheReports {
         "MSI"       = "$($msi.Count)  -> MSIPatchCodes.csv"
         "MSP"       = "$($msp.Count)  -> MSPProductCodes.csv"
     } | Format-List
+
 }
