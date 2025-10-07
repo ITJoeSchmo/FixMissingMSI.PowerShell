@@ -1499,7 +1499,7 @@ function Remove-InstallerRegistration {
     $confirmMsg = if($DeepClean){
         "DEEPCLEAN ENABLED: forcibly remove associated registry keys AND PROGRAM FILES"
     } else {
-        "Forcibly remove registry keys (installer/uninstall metadata)"
+        "Attempt Uninstalling with MsiExec followed up with scrubbing registry keys (installer/uninstall metadata)"
     }
 
     foreach($product in $productToScrub){

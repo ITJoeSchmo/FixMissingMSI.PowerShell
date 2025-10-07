@@ -3,7 +3,7 @@
     RootModule        = 'FixMissingMSI.PowerShell.psm1'
 
     # Version of this module.
-    ModuleVersion     = '1.1.3'
+    ModuleVersion     = '1.1.4'
 
     # ID used uniquely identify this module
     GUID              = '69ffbf20-83d2-4eb5-88b1-9ce47ddcd7eb'
@@ -55,7 +55,7 @@
 
             # Release notes
             ReleaseNotes = @"
-Initial release of FixMissingMSI.PowerShell (v1.1.3)
+FixMissingMSI.PowerShell (v1.1.4)
 
 Highlights:
 - Automates FixMissingMSI through PowerShell for non-interactive execution.
@@ -66,6 +66,8 @@ Highlights:
 
 1.1.3: 
 - Added -DeepClean switch to Remove-InstallerRegistration
+1.1.4: 
+- Fixed confirmation on Remove-InstallerRegistration to mention that it tries uninstalling w/ msiexec first. 
 "@
         }
     }
