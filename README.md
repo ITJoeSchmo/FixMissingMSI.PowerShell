@@ -65,16 +65,35 @@ Import-Module ./src/FixMissingMSI.PowerShell.psd1
 > Get-Help <function> -Full
 > ```
 
-### "Extra"
+### Extra
 
-| Function                       | Purpose                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `Get-InstallerRegistration`    | List MSI-registered products from the Windows Installer registry         |
-| `Remove-InstallerRegistration` | Forcefully remove MSI registrations when repair/uninstall isn’t possible |
-> **Warning**
-> `Remove-InstallerRegistration` is an advanced recovery function adapted from Microsoft’s diagnostic scripts.
-> It should be used **only after all standard uninstall or repair methods have failed**.
-> This command removes Windows Installer registration data (but does **not** delete program files) and is intended strictly as a *last-resort* measure to enable clean reinstallation of affected software.
+| Function                       | Purpose                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `Get-InstallerRegistration`    | Lists MSI-registered products from the Windows Installer registry.                               |
+| `Remove-InstallerRegistration` | Forcefully removes or scrubs MSI registrations when standard uninstall or repair isn’t possible. |
+
+> **⚠️ Warning**
+> `Remove-InstallerRegistration` is an advanced recovery function adapted from Microsoft’s *Program Install and Uninstall Troubleshooter* (`MSIMATSFN.ps1`).
+> It should be used **only after standard uninstall or repair methods have failed**.
+>
+> When invoked, the function first attempts a normal uninstallation by calling
+> `msiexec /x <ProductCode>` to remove program files and registry data through Windows Installer.
+>
+> If the installation is broken and cannot be removed by MSI:
+>
+> * The function runs the **Rapid Product Removal (RPR)** phase, which scrubs Windows Installer registration, cached metadata, and uninstall entries so that the product can be reinstalled.
+> * When run with **`-DeepClean`**, it additionally performs Microsoft’s **LPR** phase, which locates and purges related files, shims, ARP entries, and orphaned registry keys.
+>
+> During either cleanup phase, the function automatically:
+>
+> * **Backs up files and registry data** related to the target product under
+>   `C:\MATS\<ProductCode>\`
+> * Generates a **PowerShell restore script (`RestoreYourFilesAndRegistry.ps1`)** in the same directory, which can be used to revert any changes if needed.
+>
+> These backups are created before any deletion occurs, allowing administrators to inspect or restore the removed data manually if necessary.
+>
+> This command is intended strictly as a *last-resort recovery tool* to enable clean reinstallation of affected software.
+> Always verify backups or create a system restore point before use.
 
 ---
 

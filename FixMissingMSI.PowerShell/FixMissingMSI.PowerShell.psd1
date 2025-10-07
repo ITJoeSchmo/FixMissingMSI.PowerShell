@@ -3,7 +3,7 @@
     RootModule        = 'FixMissingMSI.PowerShell.psm1'
 
     # Version of this module.
-    ModuleVersion     = '1.0.2'
+    ModuleVersion     = '1.1.3'
 
     # ID used uniquely identify this module
     GUID              = '69ffbf20-83d2-4eb5-88b1-9ce47ddcd7eb'
@@ -55,7 +55,7 @@
 
             # Release notes
             ReleaseNotes = @"
-Initial release of FixMissingMSI.PowerShell (v1.0.2)
+Initial release of FixMissingMSI.PowerShell (v1.1.3)
 
 Highlights:
 - Automates FixMissingMSI through PowerShell for non-interactive execution.
@@ -64,8 +64,8 @@ Highlights:
 - Adds advanced recovery helpers for inspecting and removing broken MSI registrations.
 - Designed for easy integration with MECM, Azure Arc, Intune, or standalone PowerShell execution.
 
-1.0.2: 
-- Accidentally removed Filter parameter on Get-InstallerRegistration function in init release
+1.1.3: 
+- Added -DeepClean switch to Remove-InstallerRegistration
 "@
         }
     }
