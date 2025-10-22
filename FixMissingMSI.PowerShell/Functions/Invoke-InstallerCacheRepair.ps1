@@ -1,98 +1,108 @@
+#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Copies FixMissingMSI locally, runs it non-interactively via .NET reflection,
-    attempts to source missing MSI/MSP files from local and shared caches,
-    and exports a CSV report of unresolved items.
+    Repairs the local Windows Installer cache using FixMissingMSI, operating from a local install or shared cache.
 
 .DESCRIPTION
-    Intended for broad deployment (e.g., MECM). This script stages FixMissingMSI locally,
-    then loads the FixMissingMSI.exe assembly and invokes its internal methods via reflection,
-    bypassing the GUI to run non-interactively.
+    Invokes FixMissingMSI non-interactively via .NET reflection to detect and repair missing or mismatched
+    MSI and MSP files in C:\Windows\Installer.
 
-    For each configured source path, the script:
-      1) Loads FixMissingMSI.exe and instantiates the hidden Form to satisfy internal dependencies.
-      2) Points FixMissingMSI to a given setup source directory (MSI/MSP media).
-      3) Scans setup media, installed products/patches, and LastUsedSource locations.
-      4) Generates FixCommand entries for any missing/mismatched rows.
-      5) If a FixCommand is still empty, attempts to build a COPY command from the shared cache
-         under \\<Server>\<Share>\FixMissingMSI\Cache\{Products,Patches}.
-      6) Exports unresolved rows without a FixCommand to the central Reports folder.
-      7) Executes generated FixCommands (guarded by ShouldProcess) to repopulate C:\Windows\Installer.
+    When -FileSharePath is specified, FixMissingMSI and its cache are sourced from the shared path:
+        \\<Server>\<Share>\FixMissingMSI\
+    
+    When -FileSharePath is omitted, FixMissingMSI is expected to exist locally at:
+        $env:TEMP\FixMissingMSI  (or as provided via -LocalWorkPath)
+    
+    The script:
+      1. Loads FixMissingMSI.exe from either the local or shared path.
+      2. Runs FixMissingMSI non-interactively by invoking its internal methods via reflection.
+      3. Scans the configured setup media paths, installed products, and patch metadata.
+      4. Attempts to reconstruct missing installer files using local and/or shared caches.
+      5. Exports unresolved entries to a CSV report.
+      6. Optionally executes generated FixCommand operations to repopulate C:\Windows\Installer.
 
-    > Note: FixMissingMSI is a GUI application without a native CLI. This script leverages .NET
-    > reflection to call internal types and methods directly. If FixMissingMSI internals change
-    > in future versions, binding calls may need to be updated.
+    By default, the function stages FixMissingMSI locally before running it.  
+    Use -RunFromShare to execute directly from the share (recommended only for trusted, low-latency environments).
 
 .PARAMETER FileSharePath
-    UNC to the share root that contains the app tree. Example: \\FS01\Software
-    The script expects the app at: \\<Server>\<Share>\FixMissingMSI
+    UNC path to the share that contains FixMissingMSI and its Cache/Reports folders.  
+    Example: \\FS01\Software
+
+    When not provided, the function assumes FixMissingMSI is already installed locally
+    (for example, via Install-FixMissingMSI) under $env:TEMP\FixMissingMSI.
 
 .PARAMETER SourcePaths
-    One or more setup media folders (local or UNC) to scan for MSI/MSP packages.
-    Defaults to the shared Cache root: \\<Server>\<Share>\FixMissingMSI\Cache
+    One or more setup media paths (local or UNC) to scan for MSI/MSP packages.  
+    Defaults to:
+      - The shared cache (if -FileSharePath is provided)
+      - An empty string if not, which triggers FixMissingMSI to use registry-based LastUsedSource metadata.
 
 .PARAMETER LocalWorkPath
-    Local working directory where FixMissingMSI is staged and executed.
+    The local working directory where FixMissingMSI is staged, executed, and where logs/reports are written.  
     Defaults to $env:TEMP\FixMissingMSI.
 
 .PARAMETER RunFromShare
-    If specified, runs FixMissingMSI directly from the network share instead of
-    copying it to a local working directory first.
-
-    This can be used in trusted environments with reliable network access,
-    where the performance benefit outweighs the added risk of running directly
-    from a network path.
-
-    By default, FixMissingMSI is copied locally before execution to avoid
-    issues caused by antivirus scanning or intermittent share connectivity.
+    If specified, runs FixMissingMSI directly from the network share instead of copying binaries locally.  
+    This can improve performance in trusted, low-latency environments but increases risk of transient I/O or antivirus interference.
 
 .PARAMETER ReportOnly
-    If specified, do not execute any FixCommand operations.
-    The script still scans sources and writes the unresolved CSV report.
+    Scans and generates the unresolved CSV report without executing any FixCommand operations.  
+    Useful for audit or pre-flight scenarios.
+
+.EXAMPLE
+PS> Invoke-InstallerCacheRepair
+
+    Runs FixMissingMSI non-interactively using the local install in $env:TEMP\FixMissingMSI,
+    scans for missing MSI/MSP files, attempts repair, and exports the unresolved report locally.
 
 .EXAMPLE
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software
 
-    Stages FixMissingMSI locally, scans \\FS01\Software\FixMissingMSI\Cache,
-    attempts repair, exports unresolved CSV to \\FS01\Software\FixMissingMSI\Reports,
-    and executes FixCommands to repopulate the local installer cache.
+    Uses the shared cache \\FS01\Software\FixMissingMSI\Cache for repairs,
+    exports the unresolved report to \\FS01\Software\FixMissingMSI\Reports,
+    and executes generated FixCommands.
 
 .EXAMPLE
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -SourcePaths 'D:\Media','\\FS01\Builds\Office'
 
-    Scans the provided source paths in order (D:\Media, then \\FS01\Builds\Office) instead of the default shared cache.
-
-.EXAMPLE
-PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -SourcePaths 'D:\Media','\\FS01\Builds\Office' -ReportOnly
-
-    Scans the provided source paths in order (D:\Media, then \\FS01\Builds\Office) instead of the default shared cache.
+    Scans the provided media paths in the given order instead of the default shared cache.
 
 .EXAMPLE
 PS> Invoke-InstallerCacheRepair -FileSharePath \\FS01\Software -RunFromShare
 
-    Runs FixMissingMSI directly from the network share, without copying it locally.
-    Useful when testing or running in low-latency, trusted environments.
+    Runs FixMissingMSI directly from the network share without copying it locally first.  
+    Recommended only in environments with reliable, low-latency access to the share.
+
+.EXAMPLE
+PS> Invoke-InstallerCacheRepair -ReportOnly
+
+    Runs FixMissingMSI from the local temp install, performs discovery only,
+    and generates the unresolved CSV report without making any file repairs.
 
 .NOTES
     Author: Joey Eckelbarger
 
     Credits:
-        FixMissingMSI is authored and maintained by suyouquan
+        FixMissingMSI is authored and maintained by suyouquan  
         Source: https://github.com/suyouquan/SQLSetupTools/releases/tag/V2.2.1
 
-    Security:
-        This script writes to C:\Windows\Installer via generated FixCommands.
+    Behavior:
+        - If -FileSharePath is omitted, assumes FixMissingMSI is present in $LocalWorkPath.
+        - If FixMissingMSI.exe is missing locally, the function will throw and recommend running Install-FixMissingMSI first.
+        - All repairs are performed locally under C:\Windows\Installer.
 
-    Requires:
+    Security:
+        The script writes to C:\Windows\Installer when executing FixCommands.
+        Ensure it runs with administrative rights (see #Requires -RunAsAdministrator).
+
+    Requirements:
         - PowerShell 5.1+
+        - Administrative privileges
         - NTFS permissions to write to $LocalWorkPath
-        - Read access to \\<Server>\<Share>\FixMissingMSI and subfolders
-        - Write access to \\<Server>\<Share>\FixMissingMSI\Reports
+        - (Optional) Read/write permissions on the share when using -FileSharePath
 #>
-#Requires -RunAsAdministrator
 function Invoke-InstallerCacheRepair {
     param(
-        [Parameter(Mandatory = $true)]
         [string]$FileSharePath,
         [string[]]$SourcePaths = "",
         [string]$LocalWorkPath = (Join-Path $env:TEMP 'FixMissingMSI'),
@@ -102,18 +112,30 @@ function Invoke-InstallerCacheRepair {
 
     $ErrorActionPreference = 'Stop'
 
+    if($null -eq $FileSharePath -and $(Test-Path -Path (Join-Path $LocalWorkPath "FixMissingMSI.exe")) -eq $false){
+        Throw "No FileSharePath specified and FixMissingMSI.exe is not present in $LocalWorkPath, please specify a FileSharePath for FixMissingMSI to copy from or run Install-FixMissingMSI if running without a fileshare."
+    }
+
     # We want to ensure an empty string to be in here to ensure that the for loop runs at least 1x with an emptry string so FixMissingMSI tries to recover using sources from the original installation metadata in registry
     if($sourcePaths -notcontains ""){
         $sourcePaths += ""
     }
 
-    # Compose shared paths (app folder and caches) once. Keep all shared I/O under the app folder.
-    $ShareRoot      = $FileSharePath.TrimEnd('\')
-    $AppFolder      = Join-Path $ShareRoot 'FixMissingMSI'
-    $CacheRoot      = Join-Path $AppFolder 'Cache'
-    $ProductsCache  = Join-Path $CacheRoot 'Products'
-    $PatchesCache   = Join-Path $CacheRoot 'Patches'
-    $ReportsPath    = Join-Path $AppFolder 'Reports'
+    # Compose shared paths (app folder and caches) once. Keep all shared I/O under the app folder.\
+    if($FileSharePath){
+        $ShareRoot      = $FileSharePath.TrimEnd('\')
+        $CacheRoot      = Join-Path $AppFolder 'Cache'
+        $ProductsCache  = Join-Path $CacheRoot 'Products'
+        $PatchesCache   = Join-Path $CacheRoot 'Patches'
+        $ReportsPath    = Join-Path $AppFolder 'Reports'
+        $AppFolder      = Join-Path $ShareRoot 'FixMissingMSI'
+        $RunningLocally = $false
+    } else {
+        Write-Warning "Running locally only as FileSharePath parameter was not passed..."
+        $RunningLocally = $true # used later to ensure we dont try to write/do actions requiring the share to be defined. 
+        $AppFolder      = $LocalWorkPath
+        $ReportsPath    = $LocalWorkPath 
+    }
 
     # Prepare local working directory and transcript path first (Start-Transcript requires an existing folder).
     if (-not (Test-Path -LiteralPath $LocalWorkPath)) {
@@ -210,23 +232,25 @@ function Invoke-InstallerCacheRepair {
                 }
 
                 # 9.5) If FixCommand is empty, try building a COPY command from the shared cache
-                foreach ($row in ($badRows | Where-Object { -not $_.FixCommand })) {
-                    if($row.ProductCode -and $row.PackageCode -and $row.PackageName){
-                        $productCandidate = Join-Path $ProductsCache (Join-Path $($row.ProductCode) (Join-Path $($row.PackageCode) $($row.PackageName)))
-                        if ((Test-Path -LiteralPath $productCandidate)) {
-                            Write-Output "Found missing files in shared cache, populating FixCommand value"
-                            $row.FixCommand = "COPY `"$productCandidate`" `"C:\Windows\Installer\$($row.CachedMsiMsp)`""
-                            continue
+                if($RunningLocally -eq $false){
+                    foreach ($row in ($badRows | Where-Object { -not $_.FixCommand })) {
+                        if($row.ProductCode -and $row.PackageCode -and $row.PackageName){
+                            $productCandidate = Join-Path $ProductsCache (Join-Path $($row.ProductCode) (Join-Path $($row.PackageCode) $($row.PackageName)))
+                            if ((Test-Path -LiteralPath $productCandidate)) {
+                                Write-Output "Found missing files in shared cache, populating FixCommand value"
+                                $row.FixCommand = "COPY `"$productCandidate`" `"C:\Windows\Installer\$($row.CachedMsiMsp)`""
+                                continue
+                            }
                         }
-                    }
-
-                    if($row.ProductCode -and $row.PatchCode -and $row.PackageName){
-                        $patchCandidate   = Join-Path $PatchesCache (Join-Path $($row.ProductCode) (Join-Path $($row.PatchCode)   $($row.PackageName)))
-                        if ((Test-Path -LiteralPath $patchCandidate)) {
-                            Write-Output "Found missing files in shared cache, populating FixCommand value"
-                            $row.FixCommand = "COPY `"$patchCandidate`" `"C:\Windows\Installer\$($row.CachedMsiMsp)`""
-
-                            continue
+    
+                        if($row.ProductCode -and $row.PatchCode -and $row.PackageName){
+                            $patchCandidate   = Join-Path $PatchesCache (Join-Path $($row.ProductCode) (Join-Path $($row.PatchCode)   $($row.PackageName)))
+                            if ((Test-Path -LiteralPath $patchCandidate)) {
+                                Write-Output "Found missing files in shared cache, populating FixCommand value"
+                                $row.FixCommand = "COPY `"$patchCandidate`" `"C:\Windows\Installer\$($row.CachedMsiMsp)`""
+    
+                                continue
+                            }
                         }
                     }
                 }

@@ -19,6 +19,7 @@ Get-ChildItem -Path "$PSScriptRoot\Functions\extras" -Filter *.ps1 -File | ForEa
 
 
 Export-ModuleMember -Function @(
+    'Install-FixMissingMSI',
     'Initialize-InstallerCacheFileShare',
     'Invoke-InstallerCacheRepair',
     'Merge-InstallerCacheReports',

@@ -3,7 +3,7 @@
     RootModule        = 'FixMissingMSI.PowerShell.psm1'
 
     # Version of this module.
-    ModuleVersion     = '1.1.4'
+    ModuleVersion     = '1.1.5'
 
     # ID used uniquely identify this module
     GUID              = '69ffbf20-83d2-4eb5-88b1-9ce47ddcd7eb'
@@ -25,6 +25,7 @@
 
     # Functions to export from this module
     FunctionsToExport = @(
+        'Install-FixMissingMSI',
         'Initialize-InstallerCacheFileShare',
         'Invoke-InstallerCacheRepair',
         'Merge-InstallerCacheReports',
@@ -56,8 +57,6 @@
             # Release notes
             ReleaseNotes = @"
 FixMissingMSI.PowerShell (v1.1.4)
-
-Highlights:
 - Automates FixMissingMSI through PowerShell for non-interactive execution.
 - Enables centralized detection and repair of missing MSI/MSP cache files.
 - Supports shared, demand-driven cache population across systems.
@@ -68,6 +67,11 @@ Highlights:
 - Added -DeepClean switch to Remove-InstallerRegistration
 1.1.4: 
 - Fixed confirmation on Remove-InstallerRegistration to mention that it tries uninstalling w/ msiexec first. 
+1.1.5:
+- Adds local-only repair support for systems without a network file share.
+- Updated Invoke-InstallerCacheRepair to automatically detect and run FixMissingMSI from `$env:TEMP\FixMissingMSI when -FileSharePath is not specified.
+- Added Install-FixMissingMSI function to download and stage FixMissingMSI locally for use in disconnected or lightweight scenarios.
+- Improved help documentation and parameter consistency across functions.
 "@
         }
     }
