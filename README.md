@@ -16,10 +16,12 @@ It lets you scan systems at scale, merge reports, and repopulate missing files f
 
 ## Features
 - Non-interactive execution of FixMissingMSI via .NET Reflection  
-- Centralized reporting of missing MSI/MSP files  
+- Works in both **shared** and **local-only** modes  
+- Centralized or standalone reporting of missing MSI/MSP files  
 - Shared cache support with demand-driven population  
 - Secure ACL design for file share permissions  
 - Advanced recovery helpers for MSI registration scrubbing  
+
 
 ---
 
@@ -41,20 +43,20 @@ Import-Module ./src/FixMissingMSI.PowerShell.psd1
 ---
 
 ## Exported Functions
+| Function                             | Purpose                                                              |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `Install-FixMissingMSI`              | Download and stage FixMissingMSI locally in `$env:TEMP\FixMissingMSI`|
+| `Initialize-InstallerCacheFileShare` | Prepare a file share with the tool and reports, apply scoped ACLs    |
+| `Invoke-InstallerCacheRepair`        | Run FixMissingMSI non-interactively (supports local-only or shared)  |
+| `Merge-InstallerCacheReports`        | Merge host reports into a deduplicated summary                       |
+| `Update-InstallerCache`              | Populate the shared cache with only the required MSI/MSP files       |
+> `Invoke-InstallerCacheRepair` can now run **without -FileSharePath**, automatically detecting FixMissingMSI in `$env:TEMP\FixMissingMSI`.  
+> Use `Install-FixMissingMSI` beforehand to stage the tool locally for disconnected or lightweight scenarios.
 
-| Function                             | Purpose                                                             |
-| ------------------------------------ | ------------------------------------------------------------------- |
-| `Initialize-InstallerCacheFileShare` | Prepare a file share with the tool and reports, apply scoped ACLs   |
-| `Invoke-InstallerCacheRepair`        | Run FixMissingMSI non-interactively and output per-host CSV reports |
-| `Merge-InstallerCacheReports`        | Merge host reports into a deduplicated summary                      |
-| `Update-InstallerCache`              | Populate the shared cache with only the required MSI/MSP files      |
-> `Update-InstallerCache` copies only the specific MSI/MSP files that appear as missing in any server’s report -- it does *not* mirror every installer file from each system’s installer cache
-> This keeps the cache lean and focused on real recovery needs.
 ### Key Parameters: `Invoke-InstallerCacheRepair`
-
 | Parameter | Type | Description |
 |------------|------|-------------|
-| **FileSharePath** | `String` *(Required)* | UNC path where the shared FixMissingMSI directory exists (e.g. `\\FS01\Software` ). |
+| **FileSharePath** | `String` | Optional UNC path where the shared FixMissingMSI directory exists (e.g. `\\FS01\Software`). When omitted, the function assumes FixMissingMSI is installed locally under `$env:TEMP\FixMissingMSI` |
 | **SourcePaths** | `String[]` | One or more local or UNC paths containing MSI/MSP to scan as source for recovering missing files. By default, it also checks the shared cache (e.g. `\\FS01\Software\FixMissingMSI\Cache\{Products, Patches}`). |
 | **LocalWorkPath** | `String` | Local directory where FixMissingMSI is staged and executed locally. Defaults to `$env:TEMP\FixMissingMSI`. |
 | **RunFromShare** | `Switch` | Runs FixMissingMSI directly from the network share instead of copying locally. |
@@ -65,7 +67,7 @@ Import-Module ./src/FixMissingMSI.PowerShell.psd1
 > Get-Help <function> -Full
 > ```
 
-### Extra
+### Extras
 
 | Function                       | Purpose                                                                                          |
 | ------------------------------ | ------------------------------------------------------------------------------------------------ |
@@ -98,6 +100,13 @@ Import-Module ./src/FixMissingMSI.PowerShell.psd1
 ## Quickstart
 
 ```powershell
+
+# Run in local-only mode (no file share)
+Install-FixMissingMSI
+
+Invoke-InstallerCacheRepair -ReportOnly
+
+# Deploy with FileShare to enable a shared cache to be leveraged
 # Initialize cache share
 Initialize-InstallerCacheFileShare -FileSharePath "\\FS01\InstallerCache"
 
@@ -110,7 +119,8 @@ Merge-InstallerCacheReports -FileSharePath "\\FS01\InstallerCache"
 # Populate shared cache
 Update-InstallerCache -FileSharePath "\\FS01\InstallerCache"
 ```
-
+> Version 1.1.5 introduces **local-only repair mode**, allowing FixMissingMSI to run without a network share.
+> This is ideal for disconnected or single-system repair scenarios.
 > Full example workflows are provided under [examples/](examples/).
 
 ---

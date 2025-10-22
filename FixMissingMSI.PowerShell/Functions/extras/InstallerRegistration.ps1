@@ -1399,6 +1399,8 @@ function LPR{
 
 #endregion
 
+#endregion
+
 <#
 .SYNOPSIS
     Forcefully removes Windows Installer (MSI) product registrations when normal
