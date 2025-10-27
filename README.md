@@ -51,7 +51,7 @@ Import-Module ./src/FixMissingMSI.PowerShell.psd1
 | `Merge-InstallerCacheReports`        | Merge host reports into a deduplicated summary                       |
 | `Update-InstallerCache`              | Populate the shared cache with only the required MSI/MSP files       |
 > `Invoke-InstallerCacheRepair` can now run **without -FileSharePath**, automatically detecting FixMissingMSI in `$env:TEMP\FixMissingMSI`.  
-> Use `Install-FixMissingMSI` beforehand to stage the tool locally for disconnected or lightweight scenarios.
+> Use `Install-FixMissingMSI` beforehand to stage the tool locally.
 
 ### Key Parameters: `Invoke-InstallerCacheRepair`
 | Parameter | Type | Description |
@@ -167,4 +167,5 @@ This module loads the EXE via .NET Reflection, instantiates its form classes to 
 ## License
 
 MIT License © 2025 Joey Eckelbarger
+
 
